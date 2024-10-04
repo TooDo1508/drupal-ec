@@ -1,0 +1,4 @@
+system.admin_config_poc:
+  title: 'POC headless'
+  parent: system.admin_config_services
+  route_name: ffw_dashboard_auth.api_settings

@@ -1,0 +1,5 @@
+name: FFW Dashboard API
+description: Provides custom APIs
+type: module
+core_version_requirement: ^8 || ^9
+package: Custom module

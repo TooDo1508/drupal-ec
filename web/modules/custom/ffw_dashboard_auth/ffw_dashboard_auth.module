@@ -1,0 +1,113 @@
+<?php
+
+use \Drupal\Core\Form\FormStateInterface;
+use \Drupal\Component\Render\PlainTextOutput;
+use Drupal\Core\Url;
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ */
+function ffw_dashboard_auth_form_user_admin_settings_alter(&$form, FormStateInterface $form_state, $form_id): void {
+  $config_factory = Drupal::configFactory();
+  $mail_config = $config_factory->get('user.mail');
+  $email_token_help = t('Available variables are: [site:name], [site:url], [user:display-name], [user:account-name], [user:mail], [site:login-url], [site:url-brief], [user:edit-url], [user:one-time-login-url], [user:api-one-time-login-url], [user:cancel-url].');
+
+  $form['email_api_password_reset'] = [
+    '#type' => 'details',
+    '#title' => t('Password api recovery'),
+    '#description' => t('Edit the email messages sent to users who request a new password.') . ' ' . $email_token_help,
+    '#group' => 'email',
+    '#weight' => 10,
+  ];
+
+  $form['email_api_password_reset']['user_mail_api_password_reset_subject'] = [
+    '#type' => 'textfield',
+    '#title' => t('Subject'),
+    '#default_value' => $mail_config->get('api_password_reset.subject'),
+    '#maxlength' => 180,
+  ];
+
+  $form['email_api_password_reset']['user_mail_api_password_reset_body'] = [
+    '#type' => 'textarea',
+    '#title' => t('Body'),
+    '#default_value' => $mail_config->get('api_password_reset.body'),
+    '#rows' => 12,
+  ];
+
+  $form['#submit'][] = 'ffw_dashboard_user_admin_setting_submit';
+}
+
+
+/**
+ * Add custom submit form user_admin_setting.
+ *
+ * @param $form
+ * @param \Drupal\Core\Form\FormStateInterface $form_state
+ *
+ * @return void
+ */
+function ffw_dashboard_user_admin_setting_submit(&$form, FormStateInterface $form_state): void {
+  $mail_config = Drupal::configFactory()->getEditable('user.mail');
+  $mail_config->set('api_password_reset.subject', $form_state->getValue('user_mail_api_password_reset_subject'))
+    ->set('api_password_reset.body', $form_state->getValue('user_mail_api_password_reset_body'))
+    ->save();
+}
+
+/**
+ * @param $key
+ * @param $message
+ * @param $params
+ *
+ * @return void
+ */
+function ffw_dashboard_auth_mail($key, &$message, $params): void {
+  $token_service = \Drupal::token();
+  $language_manager = \Drupal::languageManager();
+  $langcode = $message['langcode'];
+  $variables = ['user' => $params['account']];
+  $language = $language_manager->getLanguage($langcode);
+  $original_language = $language_manager->getConfigOverrideLanguage();
+  $language_manager->setConfigOverrideLanguage($language);
+  $mail_config = \Drupal::config('user.mail');
+
+  $token_options = [
+    'langcode' => $langcode,
+    'callback' => 'ffw_dashboard_auth_mail_tokens',
+    'clear' => TRUE,
+  ];
+  $message['subject'] .= PlainTextOutput::renderFromHtml($token_service->replace($mail_config->get($key . '.subject'), $variables, $token_options));
+  $message['body'][] = $token_service->replace($mail_config->get($key . '.body'), $variables, $token_options);
+  $language_manager->setConfigOverrideLanguage($original_language);
+}
+
+/**
+ * @param $replacements
+ * @param $data
+ * @param $options
+ *
+ * @return void
+ */
+function ffw_dashboard_auth_mail_tokens(&$replacements, $data, $options): void {
+  if (isset($data['user'])) {
+    $replacements['[user:api-one-time-login-url]'] = ffw_dashboard_auth_reset_pass_url($data['user'], $options);
+    $replacements['[user:api-cancel-url]'] = user_cancel_url($data['user'], $options);
+  }
+}
+
+/**
+ * Handle generate url to reset pass.
+ *
+ * @param $account
+ * @param $options
+ *
+ * @return \Drupal\Core\GeneratedUrl|string
+ */
+function ffw_dashboard_auth_reset_pass_url($account, $options = []) {
+  $config = Drupal::config('ffw_dashboard_auth.api_settings');
+  $timestamp = REQUEST_TIME;
+  $uid = $account->id();
+  $hash = user_pass_rehash($account, $timestamp);
+  $url = rtrim($config->get('frontend_domain'), '/') . '/' . trim($config->get('reset_pass_path')) . '/' . $uid . '/' . $timestamp . '/' . $hash;
+
+  return Url::fromUri($url)->toString();
+}

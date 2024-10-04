@@ -1,0 +1,17 @@
+ffw_dashboard_auth.api.send_email_reset_pass:
+  path: '/api/user/password'
+  defaults:
+    _controller: \Drupal\ffw_dashboard_auth\Controller\PocAuthenticationController::sendEmailResetPassword
+  methods: [POST]
+  requirements:
+    _access: 'TRUE'
+    _format: 'json'
+
+ffw_dashboard_auth.api_settings:
+  path: '/admin/poc/settings'
+  defaults:
+    _form: '\Drupal\ffw_dashboard_auth\Form\PocApiSettingForm'
+    _title: 'POC settings'
+  requirements:
+    _permission: 'access administration pages'
+

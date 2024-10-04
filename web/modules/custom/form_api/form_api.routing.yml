@@ -1,0 +1,9 @@
+
+
+form_api.form_api_custom:
+  path: '/custom-site-settings'
+  defaults:
+    _form: '\Drupal\form_api\Form\FormAPI'
+    _title: 'My First Page and Menu Item'
+  requirements:
+    _permission: 'access content'

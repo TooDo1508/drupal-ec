@@ -1,0 +1,5 @@
+name: FFW General
+description: Module to provide general custom code.
+package: Custom module
+type: module
+core_version_requirement: ^8 || ^9
